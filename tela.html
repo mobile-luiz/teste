@@ -1,0 +1,1823 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>RH PRO - Acesso Restrito</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+  <style>
+    :root { 
+      --primary: #2563eb; --primary-dark: #1e40af; --sidebar-bg: #0f172a; --bg: #f8fafc; --card: #ffffff; 
+      --text: #334155; --text-light: #64748b; --border: #e2e8f0; --success: #10b981; --danger: #ef4444; 
+      --warning: #f59e0b; --shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    }
+    
+    * { margin: 0; padding: 0; box-sizing: border-box; outline: none; }
+    body { font-family: 'Inter', sans-serif; background: var(--bg); display: flex; min-height: 100vh; color: var(--text); overflow-x: hidden; }
+    
+    /* SCROLLBAR */
+    ::-webkit-scrollbar { width: 8px; height: 8px; }
+    ::-webkit-scrollbar-track, .modal-body::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb, .modal-body::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover, .modal-body::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    .modal-body::-webkit-scrollbar { width: 6px; }
+
+    /* LOGIN SCREEN (NOVO) */
+    #login-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--sidebar-bg); z-index: 10000; display: flex; justify-content: center; align-items: center; flex-direction: column; }
+    .login-card { background: white; padding: 40px; border-radius: 16px; width: 90%; max-width: 400px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.3); text-align: center; }
+    .login-header { margin-bottom: 30px; }
+    .login-header i { font-size: 40px; color: var(--primary); margin-bottom: 15px; }
+    .login-header h2 { color: #1e293b; font-size: 24px; font-weight: 700; }
+    .login-header p { color: #64748b; font-size: 14px; margin-top: 5px; }
+
+    /* SIDEBAR */
+    .sidebar { width: 260px; background: var(--sidebar-bg); color: white; position: fixed; height: 100vh; display: flex; flex-direction: column; z-index: 100; box-shadow: 4px 0 10px rgba(0,0,0,0.1); transition: 0.3s; }
+    .sidebar-header { padding: 25px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.2); }
+    .sidebar-header h2 { font-size: 18px; letter-spacing: 0.5px; font-weight: 700; }
+    .nav-item { padding: 14px 20px; display: flex; align-items: center; gap: 12px; cursor: pointer; color: #94a3b8; transition: all 0.2s ease; border-left: 3px solid transparent; font-size: 14px; font-weight: 500; }
+    .nav-item:hover { background: rgba(255,255,255,0.05); color: white; padding-left: 25px; }
+    .nav-item.active { background: linear-gradient(90deg, rgba(37,99,235,0.15) 0%, transparent 100%); color: #60a5fa; border-left-color: var(--primary); }
+    .menu-group { padding: 25px 20px 10px; font-size: 10px; text-transform: uppercase; color: #475569; letter-spacing: 1.2px; font-weight: 800; }
+    
+    /* USER PROFILE NA SIDEBAR */
+    .user-profile { margin-top: auto; padding: 20px; border-top: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 10px; }
+    .user-avatar { width: 36px; height: 36px; background: var(--primary); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: white; }
+    .user-info div { font-size: 13px; font-weight: 600; color: white; }
+    .user-info span { font-size: 11px; color: #94a3b8; }
+    .btn-logout { background: none; border: none; color: #ef4444; cursor: pointer; margin-left: auto; font-size: 16px; }
+
+    /* MAIN */
+    .main { margin-left: 260px; flex: 1; padding: 30px; width: calc(100% - 260px); transition: 0.3s; opacity: 0; pointer-events: none; }
+    .main.authenticated { opacity: 1; pointer-events: all; }
+    
+    .tab-content { display: none; animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+    .tab-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    /* CARDS */
+    .card { background: var(--card); border-radius: 12px; padding: 30px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 25px; position: relative; }
+    .card h2, .card h3 { font-weight: 600; color: #1e293b; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    .card h2 { font-size: 18px; }
+    .card h3 { font-size: 16px; }
+    
+    /* DASHBOARD GRID */
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px; }
+    .stat-card { background: white; padding: 25px; border-radius: 12px; border-left: 4px solid var(--primary); box-shadow: var(--shadow); transition: transform 0.2s; }
+    .stat-card:hover { transform: translateY(-3px); }
+    .stat-card h4 { font-size: 12px; color: var(--text-light); text-transform: uppercase; margin-bottom: 8px; font-weight: 600; letter-spacing: 0.5px; }
+    .stat-card h2 { font-size: 28px; color: #1e293b; font-weight: 700; margin: 0; }
+    .dash-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(450px, 1fr)); gap: 25px; margin-bottom: 25px; }
+    .chart-container { position: relative; height: 320px; width: 100%; }
+    
+    /* TABLES */
+    .table-container { overflow-x: auto; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 20px; }
+    table { width: 100%; border-collapse: collapse; background: white; }
+    th { text-align: left; padding: 16px; background: #f8fafc; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; border-bottom: 1px solid var(--border); letter-spacing: 0.5px; }
+    td { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 13px; color: #334155; vertical-align: middle; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+    
+    /* BADGES */
+    .badge { padding: 6px 12px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: inline-block; }
+    .bg-meta { background: #dcfce7; color: #15803d; }
+    .bg-fora { background: #fee2e2; color: #b91c1c; }
+    .bg-adv { background: #fef3c7; color: #b45309; }
+    
+    /* FORMS */
+    .photo-section { border: 2px dashed #cbd5e1; border-radius: 12px; padding: 30px; text-align: center; background: #f8fafc; margin-bottom: 25px; transition: 0.3s; }
+    .photo-section:hover { border-color: var(--primary); background: #f0f9ff; }
+    .preview-circle { width: 130px; height: 130px; border-radius: 50%; object-fit: cover; border: 4px solid white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); display: none; margin: 0 auto 15px; }
+    video, .photo-section video { width: 100%; max-width: 320px; border-radius: 8px; background: #000; margin-bottom: 15px; display: none; margin: 0 auto; box-shadow: var(--shadow); }
+    
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; }
+    .full { grid-column: 1 / -1; }
+    .field { display: flex; flex-direction: column; gap: 8px; text-align: left; }
+    label { font-size: 12px; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.3px; }
+    input, select, textarea { padding: 12px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 14px; background: #fff; color: #334155; transition: all 0.2s; font-family: 'Inter', sans-serif; }
+    input:focus, select:focus, textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1); }
+    
+    /* BUTTONS */
+    .btn-submit { background: var(--primary); color: white; border: none; padding: 14px 24px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 14px; transition: all 0.2s; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.2); width: 100%; margin-top: 10px; display: flex; justify-content: center; align-items: center; gap: 8px; }
+    .btn-submit:hover { background: var(--primary-dark); transform: translateY(-1px); box-shadow: 0 6px 8px rgba(37, 99, 235, 0.3); }
+    .btn-submit.small { width: auto; padding: 8px 15px; font-size: 12px; margin: 0; }
+    
+    .btn-secondary { background: white; color: #475569; border: 1px solid #cbd5e1; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; margin-right: 5px; }
+    .btn-secondary:hover { background: #f1f5f9; color: #1e293b; border-color: #94a3b8; }
+    
+    /* TOAST NOTIFICATION */
+    #toast-container { position: fixed; top: 20px; right: 20px; z-index: 5000; display: flex; flex-direction: column; gap: 10px; }
+    .toast { background: white; padding: 15px 20px; border-radius: 8px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); border-left: 5px solid #333; animation: slideIn 0.3s ease; display: flex; align-items: center; gap: 15px; min-width: 320px; transform: translateX(0); }
+    .toast.success { border-color: var(--success); }
+    .toast.error { border-color: var(--danger); }
+    .toast.info { border-color: var(--primary); }
+    .toast i { font-size: 18px; }
+    .toast-content h4 { margin: 0; font-size: 14px; font-weight: 600; }
+    .toast-content p { margin: 2px 0 0; font-size: 12px; color: #64748b; }
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
+
+    /* LOADER */
+    #loader { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); backdrop-filter: blur(4px); z-index:2000; justify-content:center; align-items:center; flex-direction:column; }
+    
+    /* MODAL COM SCROLL */
+    .modal { display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter: blur(2px); z-index:3000; justify-content:center; align-items:center; opacity: 0; transition: opacity 0.2s; }
+    .modal.show { opacity: 1; }
+    .modal-content { 
+      background:white; 
+      border-radius: 12px; 
+      width:95%; 
+      max-width:700px; 
+      max-height: 85vh;
+      box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); 
+      transform: scale(0.95); 
+      transition: transform 0.2s; 
+      display: flex;
+      flex-direction: column;
+    }
+    .modal.show .modal-content { transform: scale(1); }
+    
+    .modal-header { padding: 25px 35px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .modal-body { padding: 0 35px; overflow-y: auto; flex-grow: 1; max-height: calc(85vh - 140px); }
+    .modal-footer { padding: 25px 35px; border-top: 1px solid var(--border); background: #f8fafc; border-bottom-left-radius: 12px; border-bottom-right-radius: 12px; flex-shrink: 0; }
+    
+    /* Search Bar */
+    .search-box { position: relative; margin-bottom: 20px; }
+    .search-box input { padding-left: 40px; width: 100%; }
+    .search-box i { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: #94a3b8; }
+    
+    /* PAGINAÇÃO */
+    .pagination-container { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-top: 1px solid var(--border); flex-wrap: wrap; gap: 15px; }
+    .pagination-info { font-size: 13px; color: var(--text-light); font-weight: 500; }
+    .pagination-controls { display: flex; align-items: center; gap: 8px; }
+    .pagination-btn { background: white; border: 1px solid var(--border); color: var(--text); padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; min-width: 36px; display: flex; align-items: center; justify-content: center; }
+    .pagination-btn:hover:not(:disabled) { background: #f1f5f9; border-color: var(--primary); color: var(--primary); }
+    .pagination-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+    .pagination-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .pagination-ellipsis { padding: 8px; color: var(--text-light); }
+    
+    .export-buttons { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+    .btn-excel { background: #0e9f6e; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-excel:hover { background: #057a55; transform: translateY(-1px); }
+    .btn-pdf { background: #dc2626; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; font-size: 13px; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+    .btn-pdf:hover { background: #b91c1c; transform: translateY(-1px); }
+    
+    .table-actions { display: flex; gap: 8px; }
+    .table-actions button { padding: 6px 10px; font-size: 11px; }
+    
+    /* Controles de itens por página */
+    .items-per-page { display: flex; align-items: center; gap: 10px; }
+    .items-per-page select { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; background: white; font-size: 13px; }
+    
+    /* Checkbox personalizado e URL truncada */
+    .checkbox-container { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+    .checkbox-container input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; }
+    .checkbox-container label { cursor: pointer; font-size: 12px; color: #475569; text-transform: none; font-weight: 400; }
+    .url-truncate { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; padding: 8px; background: #f8fafc; border-radius: 4px; margin-top: 5px; font-size: 11px; color: #64748b; }
+    
+    /* Responsividade */
+    @media (max-width: 1200px) { .table-container { font-size: 12px; } th, td { padding: 12px 10px; } }
+    @media (max-width: 768px) { 
+      .pagination-container { flex-direction: column; align-items: stretch; }
+      .export-buttons, .pagination-controls { justify-content: center; }
+      .dash-row { grid-template-columns: 1fr; }
+      .sidebar { transform: translateX(-100%); width: 0; }
+      .main { margin-left: 0; width: 100%; }
+      .sidebar.mobile-open { transform: translateX(0); width: 260px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="login-screen">
+    <div class="login-card">
+      <div class="login-header">
+        <i class="fas fa-chart-line"></i>
+        <h2>RH PRO</h2>
+        <p>Acesso Restrito ao Sistema</p>
+      </div>
+      <div class="form-grid" style="grid-template-columns: 1fr; gap: 15px;">
+        <div class="field">
+          <label>EMAIL CORPORATIVO</label>
+          <input type="email" id="login-email" placeholder="seu.email@empresa.com">
+        </div>
+        <div class="field">
+          <label>SENHA</label>
+          <input type="password" id="login-senha" placeholder="••••••••" onkeypress="if(event.key==='Enter') System.login()">
+        </div>
+        <button class="btn-submit" onclick="System.login()">
+          <i class="fas fa-sign-in-alt"></i> ENTRAR
+        </button>
+      </div>
+      <p style="margin-top:20px; font-size:12px; color:#94a3b8;">Sistema Integrado de Gestão v7.4</p>
+    </div>
+  </div>
+
+  <div id="toast-container"></div>
+  <div id="loader">
+    <div style="text-align:center">
+      <i class="fas fa-circle-notch fa-spin fa-3x" style="color:var(--primary)"></i>
+      <p style="margin-top:15px; font-weight:600; color:var(--text);">Processando dados...</p>
+    </div>
+  </div>
+
+  <div id="modal-editar-ocorrencia" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 style="color:var(--primary-dark); margin-bottom: 0;">
+          <i class="fas fa-edit"></i> Editar Ocorrência
+        </h2>
+      </div>
+      
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="field"><label>Categoria</label>
+            <select id="edit-ocorrencia-cat" onchange="toggleFormEdit()">
+              <option value="Falta">Falta / Ausência</option>
+              <option value="Disciplinar">Medida Disciplinar</option>
+            </select>
+          </div>
+          <div class="field"><label>Matrícula</label><input type="text" id="edit-ocorrencia-mat" placeholder="Digite a matrícula" required></div>
+          <div class="field"><label>Data</label><input type="date" id="edit-ocorrencia-data" required></div>
+          <div class="field"><label id="label-tipo-edit">Tipo de Falta</label><select id="edit-ocorrencia-tipo"></select></div>
+          <div class="field full" id="box-dias-edit" style="display:none"><label>Dias de Suspensão</label><input type="number" id="edit-ocorrencia-dias" value="0"></div>
+          <div class="field full"><label>Motivo / Observação</label><textarea id="edit-ocorrencia-obs" rows="4" placeholder="Descreva os detalhes..."></textarea></div>
+          <input type="hidden" id="edit-ocorrencia-id">
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <div style="display:flex; gap:10px; width:100%;">
+          <button class="btn-submit" style="flex:1; margin-top:0;" onclick="salvarEdicaoOcorrencia()">
+            <i class="fas fa-save"></i> SALVAR ALTERAÇÕES
+          </button>
+          <button class="btn-secondary" style="flex:1;" onclick="fecharModalOcorrencia()">
+            <i class="fas fa-times"></i> CANCELAR
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-editar" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2 style="color:var(--primary-dark); margin-bottom: 0;">
+          <i class="fas fa-user-edit"></i> Editar Colaborador
+        </h2>
+      </div>
+      
+      <div class="modal-body">
+        <div class="photo-section" id="edit-photo-section">
+          <img id="edit-img-preview" class="preview-circle">
+          <video id="edit-webcam" autoplay playsinline style="display:none;"></video>
+          <canvas id="edit-canvas" width="320" height="240" style="display:none"></canvas>
+          <div style="margin-top:15px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;">
+            <div class="checkbox-container">
+              <input type="checkbox" id="usar-webcam-checkbox" onclick="CameraManager.toggleWebcam('edit')">
+              <label for="usar-webcam-checkbox">Usar Webcam</label>
+            </div>
+            
+            <label class="btn-secondary" style="margin: 0;">
+              <i class="fas fa-cloud-upload-alt"></i> UPLOAD DE ARQUIVO
+              <input type="file" hidden accept="image/*" onchange="CameraManager.previewFile(this, 'edit')">
+            </label>
+            
+            <button class="btn-secondary" onclick="CameraManager.clearPhoto('edit')" style="color:var(--danger); margin: 0;">
+              <i class="fas fa-times"></i> Remover Foto
+            </button>
+          </div>
+        </div>
+        
+        <div class="form-grid">
+          <div class="field full">
+            <label>NOME</label>
+            <input type="text" id="edit-nome" placeholder="Nome completo">
+          </div>
+          
+          <div class="field">
+            <label>MATRÍCULA</label>
+            <input type="text" id="edit-mat" readonly style="background-color: #f1f5f9;">
+          </div>
+          
+          <div class="field">
+            <label>SETOR</label>
+            <input type="text" id="edit-setor" placeholder="Setor">
+          </div>
+          
+          <div class="field">
+            <label>FUNÇÃO</label>
+            <input type="text" id="edit-funcao" placeholder="Função">
+          </div>
+          
+          <div class="field">
+            <label>DATA ADMISSÃO</label>
+            <input type="date" id="edit-adm">
+          </div>
+          
+          <div class="field">
+            <label>STATUS</label>
+            <select id="edit-status">
+              <option>Ativo</option>
+              <option>Inativo</option>
+            </select>
+          </div>
+          
+          <div class="field full">
+            <label>URL DA FOTO (ALTERNATIVA)</label>
+            <input type="text" id="edit-foto" placeholder="Cole a URL da imagem">
+            <div id="edit-foto-preview" class="url-truncate" style="display: none;"></div>
+          </div>
+          
+          <input type="hidden" id="edit-foto-base64">
+          
+          <div class="field full" style="margin-top: 20px; padding-top: 20px; border-top: 1px dashed #e2e8f0;">
+            <div class="checkbox-container">
+              <input type="checkbox" id="responsabilidade-checkbox">
+              <label for="responsabilidade-checkbox" style="font-size: 11px; color: #64748b; font-weight: 400;">
+                PRESENTE A RESPONSABILIDADE DO CONSELHO DE DETENÇÕES
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <div style="display:flex; gap:10px; width:100%;">
+          <button class="btn-submit" style="flex:1; margin-top:0;" onclick="salvarEdicao()">
+            <i class="fas fa-save"></i> SALVAR ALTERAÇÕES
+          </button>
+          <button class="btn-secondary" style="flex:1;" onclick="fecharModal()">
+            <i class="fas fa-times"></i> CANCELAR
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <i class="fas fa-chart-line fa-lg" style="color: #60a5fa;"></i> 
+      <h2>RH PRO <span style="font-size:10px; opacity:0.6; font-weight:400">v7.4</span></h2>
+    </div>
+    
+    <div class="menu-group">OPERACIONAL</div>
+    <div class="nav-item active" onclick="System.switchTab('cadastro', this)">
+      <i class="fas fa-user-plus"></i> Cadastro Base
+    </div>
+    <div class="nav-item" onclick="System.switchTab('ocorrencia', this)">
+      <i class="fas fa-exclamation-circle"></i> Lançar Ocorrência
+    </div>
+    <div class="nav-item" onclick="System.switchTab('colaboradores-lista', this); TableManager.instances.colaboradores.loadData();">
+      <i class="fas fa-users"></i> Todos Colaboradores
+    </div>
+    
+    <div class="menu-group">RELATÓRIOS</div>
+    <div class="nav-item" onclick="System.switchTab('relatorio', this)">
+      <i class="fas fa-calendar-day"></i> Relatório Diário
+    </div>
+    <div class="nav-item" onclick="System.switchTab('mensal', this)">
+      <i class="fas fa-chart-bar"></i> Relatório Mensal
+    </div>
+    <div class="nav-item" onclick="System.switchTab('anual', this)">
+      <i class="fas fa-trophy"></i> Relatório Anual
+    </div>
+    <div class="nav-item" onclick="System.switchTab('dashboard', this); carregarDashboard();" style="color: #fbbf24;">
+      <i class="fas fa-tachometer-alt"></i> Dashboard Executivo
+    </div>
+    
+    <div class="menu-group">CONSULTAS</div>
+    <div class="nav-item" onclick="System.switchTab('consulta', this); carregarTabelas();">
+      <i class="fas fa-list-ul"></i> Histórico Geral
+    </div>
+    <div class="nav-item" onclick="System.switchTab('ficha', this)">
+      <i class="fas fa-id-card"></i> Ficha Técnica
+    </div>
+
+    <div class="user-profile">
+      <div class="user-avatar" id="user-avatar-initial">U</div>
+      <div class="user-info">
+        <div id="user-name-display">Usuário</div>
+        <span id="user-email-display">conectado</span>
+      </div>
+      <button class="btn-logout" onclick="location.reload()" title="Sair"><i class="fas fa-sign-out-alt"></i></button>
+    </div>
+  </nav>
+
+  <main class="main">
+    
+    <section id="tab-cadastro" class="tab-content active">
+      <div class="card">
+        <h2><i class="fas fa-user-plus" style="color:var(--primary)"></i> Novo Cadastro</h2>
+        <div class="photo-section">
+          <img id="img-preview" class="preview-circle">
+          <video id="webcam" autoplay playsinline></video>
+          <canvas id="canvas" width="320" height="240" style="display:none"></canvas>
+          <div style="margin-top:15px;">
+            <button class="btn-secondary" onclick="CameraManager.startCam('cadastro')">
+              <i class="fas fa-camera"></i> Usar Webcam
+            </button>
+            <button class="btn-secondary" id="snap" style="display:none; background:var(--success); color:white; border-color:var(--success);" onclick="CameraManager.capture('cadastro')">
+              <i class="fas fa-check"></i> Capturar Foto
+            </button>
+            <label class="btn-secondary">
+              <i class="fas fa-cloud-upload-alt"></i> Upload de Arquivo 
+              <input type="file" hidden accept="image/*" onchange="CameraManager.previewFile(this, 'cadastro')">
+            </label>
+          </div>
+          <input type="hidden" id="c-foto">
+        </div>
+        <div class="form-grid">
+          <div class="field full"><label>Nome Completo</label><input type="text" id="c-nome" placeholder="Ex: João da Silva" required></div>
+          <div class="field"><label>Matrícula</label><input type="text" id="c-mat" placeholder="Ex: 00123" required></div>
+          <div class="field"><label>Setor</label><input type="text" id="c-setor" placeholder="Ex: Logística" required></div>
+          <div class="field"><label>Função</label><input type="text" id="c-funcao" placeholder="Ex: Assistente" required></div>
+          <div class="field"><label>Data Admissão</label><input type="date" id="c-adm" required></div>
+          <div class="field"><label>Status</label>
+            <select id="c-status">
+              <option>Ativo</option>
+              <option>Inativo</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-submit" onclick="saveColab()">CADASTRAR COLABORADOR</button>
+      </div>
+    </section>
+
+    <section id="tab-dashboard" class="tab-content">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap: wrap; gap:10px;">
+          <h2><i class="fas fa-chart-pie" style="color:var(--primary)"></i> Dashboard Executivo</h2>
+          
+          <div style="display:flex; gap:10px; align-items:center; background: #f8fafc; padding: 5px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <select id="dash-tipo" onchange="toggleDashFiltro()" style="border:none; background:transparent; font-weight:600; color:var(--primary); cursor:pointer;">
+              <option value="mensal">📅 Mensal</option>
+              <option value="anual">🏆 Anual</option>
+            </select>
+            
+            <div style="width: 1px; height: 20px; background: #cbd5e1;"></div>
+
+            <input type="month" id="dash-periodo" style="border:none; background:transparent; padding:5px;">
+            <input type="number" id="dash-ano-input" min="2020" max="2030" style="border:none; background:transparent; padding:5px; width:80px; display:none;">
+            
+            <button class="btn-submit small" onclick="carregarDashboard()">
+              <i class="fas fa-sync-alt"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="stats-grid">
+          <div class="stat-card">
+            <h4 id="lbl-ind-geral">Indicador Geral (Mês)</h4>
+            <h2 id="d-ind-geral">0.00%</h2>
+          </div>
+          <div class="stat-card">
+            <h4>Meta x Realizado</h4>
+            <h2 id="d-meta-status" style="font-size:16px;">--</h2>
+            <small style="color:#64748b">Meta Aceitável: 1.92%</small>
+          </div>
+          <div class="stat-card">
+            <h4>Total de Medidas</h4>
+            <h2 id="d-total-medidas">0</h2>
+          </div>
+          <div class="stat-card" style="border-left-color: var(--warning);">
+            <h4>Setor Crítico</h4>
+            <h2 id="d-setor-critico" style="font-size:18px">--</h2>
+          </div>
+        </div>
+
+        <div class="dash-row">
+          <div class="card"><h3>Distribuição por Tipo</h3><div class="chart-container"><canvas id="chartTipo"></canvas></div></div>
+          <div class="card"><h3>Tendência Anual</h3><div class="chart-container"><canvas id="chartTendencia"></canvas></div></div>
+        </div>
+        <div class="dash-row">
+          <div class="card"><h3>Faltas por Setor</h3><div class="chart-container"><canvas id="chartSetor"></canvas></div></div>
+          <div class="card"><h3>Top 5 Faltosos</h3>
+            <div class="table-container">
+              <table id="tab-top5">
+                <thead><tr><th>Nome</th><th>Setor</th><th>Faltas</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-ocorrencia" class="tab-content">
+      <div class="card">
+        <h2><i class="fas fa-file-contract" style="color:var(--primary)"></i> Registro de Ocorrência</h2>
+        <div class="form-grid">
+          <div class="field"><label>Categoria</label>
+            <select id="o-cat" onchange="toggleForm()">
+              <option value="Falta">Falta / Ausência</option>
+              <option value="Disciplinar">Medida Disciplinar</option>
+            </select>
+          </div>
+          <div class="field"><label>Matrícula</label><input type="text" id="o-mat" placeholder="Digite a matrícula" required></div>
+          <div class="field"><label>Data</label><input type="date" id="o-data" required></div>
+          <div class="field"><label id="label-tipo">Tipo de Falta</label><select id="o-tipo"></select></div>
+          <div class="field full" id="box-dias" style="display:none"><label>Dias de Suspensão</label><input type="number" id="o-dias" value="0"></div>
+          <div class="field full"><label>Motivo / Observação</label><textarea id="o-obs" rows="4" placeholder="Descreva os detalhes..."></textarea></div>
+        </div>
+        <button class="btn-submit" onclick="salvarOcorrenciaGeral()">SALVAR REGISTRO</button>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-top:30px; padding-top:20px; border-top:1px solid var(--border);">
+          <h3><i class="fas fa-list" style="color:var(--primary)"></i> Lista de Ocorrências Registradas</h3>
+          <div style="display:flex; gap:10px;">
+            <button class="btn-excel" onclick="ExcelExporter.exportOcorrencias()">
+              <i class="fas fa-file-excel"></i> Exportar Excel
+            </button>
+            <button class="btn-secondary" onclick="TableManager.instances.ocorrencias.loadData()">
+              <i class="fas fa-sync-alt"></i> Atualizar
+            </button>
+          </div>
+        </div>
+        
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" id="searchOcorrenciaInput" onkeyup="TableManager.instances.ocorrencias.search()" placeholder="Buscar por Matrícula, Tipo ou Observação...">
+        </div>
+        
+        <div class="table-container">
+          <table id="tabela-ocorrencias">
+            <thead>
+              <tr>
+                <th>Data</th>
+                <th>Matrícula</th>
+                <th>Categoria</th>
+                <th>Tipo</th>
+                <th>Dias</th>
+                <th>Observação</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="corpo-ocorrencias"></tbody>
+          </table>
+        </div>
+
+        <div class="pagination-container" id="paginacao-ocorrencias">
+          <div class="pagination-info" id="pagination-info-ocorrencias">
+            Mostrando 0 de 0 ocorrências
+          </div>
+          
+          <div class="items-per-page">
+            <span style="font-size: 13px; color: var(--text-light);">Itens por página:</span>
+            <select id="items-per-page-ocorrencias" onchange="TableManager.instances.ocorrencias.changeItemsPerPage(this.value)">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          
+          <div class="pagination-controls" id="pagination-controls-ocorrencias"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-relatorio" class="tab-content">
+      <div class="card">
+        <h2><i class="fas fa-calendar-day" style="color:var(--primary)"></i> Relatório Diário</h2>
+        <div class="form-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); align-items:end; margin-bottom: 20px;">
+          <div class="field"><label>Data</label><input type="date" id="filtro-data" required></div>
+          <div class="field"><label>Setor</label><input type="text" id="filtro-setor" placeholder="Opcional"></div>
+          <div class="field"><label>Colaborador</label><input type="text" id="filtro-colab" placeholder="Opcional"></div>
+          <button class="btn-submit" style="margin:0; padding:12px" onclick="gerarRelatorioDiario()">FILTRAR DADOS</button>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Nome</th><th>Matrícula</th><th>Setor</th><th>Tipo</th><th>Obs</th></tr>
+            </thead>
+            <tbody id="corpoRelatorio"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-mensal" class="tab-content">
+      <div class="card">
+        <h2><i class="fas fa-calendar-alt" style="color:var(--primary)"></i> Relatório Mensal</h2>
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
+          <input type="month" id="m-periodo" required>
+          <button class="btn-submit" style="margin:0; width:auto;" onclick="gerarRelatorioMensal()">PROCESSAR RELATÓRIO</button>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><h4>Atestados</h4><h2 id="st-atestado">0</h2></div>
+          <div class="stat-card"><h4>Declarações</h4><h2 id="st-declaracao">0</h2></div>
+          <div class="stat-card"><h4>Faltas Injust.</h4><h2 id="st-falta">0</h2></div>
+          <div class="stat-card"><h4>% Absenteísmo</h4><h2 id="st-perc">0%</h2></div>
+        </div>
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Nome</th><th>Setor</th><th>Atest</th><th>Decl</th><th>Falta</th><th>% Indiv</th><th>Status Meta</th></tr>
+            </thead>
+            <tbody id="corpoMensal"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-anual" class="tab-content">
+      <div class="card">
+        <h2><i class="fas fa-chart-line" style="color:var(--primary)"></i> Análise Anual</h2>
+        <div style="display:flex; gap:10px; margin-bottom:20px;">
+          <input type="number" id="a-ano" value="2025" min="2000" max="2100">
+          <button class="btn-submit" style="margin:0; width:auto;" onclick="gerarRelatorioAnual()">GERAR ANÁLISE</button>
+        </div>
+        <div class="stats-grid">
+          <div class="stat-card"><h4>Total Faltas</h4><h2 id="an-total-faltas">0</h2></div>
+          <div class="stat-card"><h4>Setor Crítico</h4><h2 id="an-setor-critico">--</h2></div>
+          <div class="stat-card"><h4>Medidas</h4><h2 id="an-total-medidas">0</h2></div>
+          <div class="stat-card"><h4>Acima da Meta</h4><h2 id="an-total-fora" style="color:var(--danger)">0</h2></div>
+        </div>
+        <div class="dash-row">
+          <div class="card"><h3>Ranking Faltas</h3>
+            <div class="table-container">
+              <table id="rankColabs">
+                <thead><tr><th>Nome</th><th>Total</th><th>%</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card"><h3>Por Setor</h3>
+            <div class="table-container">
+              <table id="rankSetores">
+                <thead><tr><th>Setor</th><th>Abs%</th></tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-consulta" class="tab-content">
+      <div class="card">
+        <h2><i class="fas fa-gavel" style="color:var(--primary)"></i> Histórico: Medidas Disciplinares</h2>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap: wrap; gap:15px;">
+          <div class="export-buttons">
+            <button class="btn-excel" onclick="ExcelExporter.exportMedidas()">
+              <i class="fas fa-file-excel"></i> Exportar Excel
+            </button>
+            <button class="btn-secondary" onclick="TableManager.instances.medidas.loadData()">
+              <i class="fas fa-sync-alt"></i> Atualizar
+            </button>
+          </div>
+          
+          <div class="search-box" style="flex: 1; max-width: 400px; margin-bottom: 0;">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchMedidasInput" onkeyup="TableManager.instances.medidas.search()" placeholder="Buscar por Matrícula, Tipo ou Motivo...">
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Data</th><th>Matrícula</th><th>Tipo</th><th>Motivo</th><th>Dias</th></tr>
+            </thead>
+            <tbody id="corpoMedidas"></tbody>
+          </table>
+        </div>
+
+        <div class="pagination-container" id="paginacao-medidas">
+          <div class="pagination-info" id="pagination-info-medidas">
+            Mostrando 0 de 0 medidas
+          </div>
+          
+          <div class="items-per-page">
+            <span style="font-size: 13px; color: var(--text-light);">Itens por página:</span>
+            <select id="items-per-page-medidas" onchange="TableManager.instances.medidas.changeItemsPerPage(this.value)">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          
+          <div class="pagination-controls" id="pagination-controls-medidas"></div>
+        </div>
+      </div>
+      
+      <div class="card" style="margin-top: 30px;">
+        <h2><i class="fas fa-history" style="color:var(--primary)"></i> Histórico: Faltas</h2>
+        
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap: wrap; gap:15px;">
+          <div class="export-buttons">
+            <button class="btn-excel" onclick="ExcelExporter.exportFaltas()">
+              <i class="fas fa-file-excel"></i> Exportar Excel
+            </button>
+            <button class="btn-secondary" onclick="TableManager.instances.faltas.loadData()">
+              <i class="fas fa-sync-alt"></i> Atualizar
+            </button>
+          </div>
+          
+          <div class="search-box" style="flex: 1; max-width: 400px; margin-bottom: 0;">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchFaltasInput" onkeyup="TableManager.instances.faltas.search()" placeholder="Buscar por Matrícula, Tipo ou Observação...">
+          </div>
+        </div>
+        
+        <div class="table-container">
+          <table>
+            <thead>
+              <tr><th>Data</th><th>Matrícula</th><th>Tipo</th><th>Observação</th></tr>
+            </thead>
+            <tbody id="corpoFaltas"></tbody>
+          </table>
+        </div>
+
+        <div class="pagination-container" id="paginacao-faltas">
+          <div class="pagination-info" id="pagination-info-faltas">
+            Mostrando 0 de 0 faltas
+          </div>
+          
+          <div class="items-per-page">
+            <span style="font-size: 13px; color: var(--text-light);">Itens por página:</span>
+            <select id="items-per-page-faltas" onchange="TableManager.instances.faltas.changeItemsPerPage(this.value)">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+            </select>
+          </div>
+          
+          <div class="pagination-controls" id="pagination-controls-faltas"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-ficha" class="tab-content">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom: 1px solid var(--border); padding-bottom: 20px; margin-bottom: 20px; flex-wrap: wrap; gap:15px;">
+          <div style="display:flex; align-items:center; gap:15px;">
+            <h2 style="margin:0;"><i class="fas fa-id-card-alt" style="color:var(--primary)"></i> Ficha Técnica</h2>
+            <div id="acoes-ficha" style="display:none; gap:10px;">
+              <button class="btn-secondary" onclick="exportarPDF()" style="color:var(--danger); border-color:var(--danger);">
+                <i class="fas fa-file-pdf"></i> PDF
+              </button>
+            </div>
+          </div>
+          <div style="display:flex; gap:10px;">
+            <input type="text" id="busca-mat" placeholder="Matrícula..." style="width:150px;">
+            <button class="btn-submit" style="margin:0; width:auto; padding:10px 20px;" onclick="gerarFicha()">
+              <i class="fas fa-search"></i>
+            </button>
+          </div>
+        </div>
+        
+        <div id="ficha-container" style="display:none; padding: 10px;">
+          <div style="display:grid; grid-template-columns: 160px 1fr 240px; gap:30px; align-items: start;">
+            <div style="text-align:center">
+              <img id="f-foto" src="https://via.placeholder.com/150" style="width:150px; height:150px; border-radius:10px; border:1px solid #e2e8f0; object-fit:cover; margin-bottom:10px; box-shadow: var(--shadow);">
+              <div style="font-size: 10px; color: #64748b; text-transform: uppercase; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.5px;">Tempo de Empresa</div>
+              <div id="f-tempo" class="badge bg-adv" style="display:inline-block; font-size:11px; white-space: normal; line-height: 1.4; max-width: 150px;">--</div>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+              <div><label>NOME COMPLETO</label><h3 id="f-nome" style="font-size:24px; color:var(--text); margin-top:2px;">--</h3></div>
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div><label>SETOR</label><p id="f-setor" style="font-weight:500;">--</p></div>
+                <div><label>FUNÇÃO</label><p id="f-cargo" style="font-weight:500;">--</p></div>
+              </div>
+              <div><label>DATA DE ADMISSÃO</label><p id="f-adm">--</p></div>
+            </div>
+            
+            <div style="text-align:center; background:#f8fafc; padding:25px; border-radius:10px; border: 1px solid #e2e8f0;">
+              <label style="color:var(--text-light);">ABSENTEÍSMO (MÊS)</label>
+              <h2 id="f-abs" style="font-size:36px; margin:10px 0; color:var(--primary); font-weight:800;">0%</h2>
+              <div id="f-meta-status"></div>
+            </div>
+          </div>
+
+          <div class="dash-row" style="margin-top:35px;">
+            <div class="card" style="margin:0; padding:20px; box-shadow:none; background: #f8fafc;">
+              <h3 style="font-size:14px; margin-bottom:15px; color:var(--text);">Evolução de Faltas (Ano Atual)</h3>
+              <div style="height:220px; position:relative;"><canvas id="chartFicha"></canvas></div>
+            </div>
+            <div class="card" style="margin:0; padding:20px; box-shadow:none; background: #f8fafc;">
+              <h3 style="font-size:14px; margin-bottom:15px; color:var(--text);">Resumo Histórico</h3>
+              <div id="f-total-faltas" style="padding: 12px; background: white; border:1px solid #fed7aa; border-radius: 6px; margin-bottom: 12px; font-size: 13px; color: #9a3412;"></div>
+              <div id="f-total-medidas" style="padding: 12px; background: white; border:1px solid #e2e8f0; border-radius: 6px; font-size: 13px; color: #475569;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-colaboradores-lista" class="tab-content">
+      <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:15px;">
+          <h2><i class="fas fa-users" style="color:var(--primary)"></i> Base de Colaboradores</h2>
+          <div class="export-buttons">
+            <button class="btn-excel" onclick="ExcelExporter.exportColaboradores()">
+              <i class="fas fa-file-excel"></i> Exportar Excel
+            </button>
+            <button class="btn-submit" onclick="TableManager.instances.colaboradores.loadData()" style="margin:0; width:auto; padding:10px 20px;">
+              <i class="fas fa-sync"></i> Atualizar Lista
+            </button>
+          </div>
+        </div>
+        
+        <div class="search-box">
+          <i class="fas fa-search"></i>
+          <input type="text" id="searchInput" onkeyup="TableManager.instances.colaboradores.search()" placeholder="Buscar por Nome, Matrícula ou Setor...">
+        </div>
+
+        <div class="table-container">
+          <table id="tabela-todos-colab">
+            <thead>
+              <tr>
+                <th>Foto</th>
+                <th>Matrícula</th>
+                <th>Nome</th>
+                <th>Setor</th>
+                <th>Função</th>
+                <th>Admissão</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="corpo-todos-colab"></tbody>
+          </table>
+        </div>
+
+        <div class="pagination-container">
+          <div class="pagination-info" id="pagination-info">
+            Mostrando 0 de 0 colaboradores
+          </div>
+          
+          <div class="items-per-page">
+            <span style="font-size: 13px; color: var(--text-light);">Itens por página:</span>
+            <select id="items-per-page" onchange="TableManager.instances.colaboradores.changeItemsPerPage(this.value)">
+              <option value="10">10</option>
+              <option value="20" selected>20</option>
+              <option value="50">50</option>
+              <option value="100">100</option>
+              <option value="200">200</option>
+            </select>
+          </div>
+          
+          <div class="pagination-controls" id="pagination-controls"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+// ================================
+// CONFIGURAÇÕES GERAIS E STATE
+// ================================
+const API_URL = "https://script.google.com/macros/s/AKfycbzvGJdBIOJEgyyKemnl8m5trgh-vnBwF1yNBxbpqaRN2xIYb4xdowaRSRKk1922r9Up2g/exec";
+let charts = { chartTipo: null, chartTendencia: null, chartSetor: null, chartFicha: null };
+
+// ================================
+// UTILITÁRIOS (DATA & TEMPO)
+// ================================
+const Utils = {
+    formatarDataBR(dataString) {
+        if (!dataString) return "--";
+        let dataParte = String(dataString).split('T')[0];
+        if (dataParte.includes('-')) {
+            let partes = dataParte.split('-');
+            if(partes.length === 3) return `${partes[2]}/${partes[1]}/${partes[0]}`;
+        }
+        return dataParte;
+    },
+
+    calcularTempoDetalhado(dataString) {
+        if (!dataString) return "--";
+        const partesData = String(dataString).split('T')[0].split('-');
+        if(partesData.length !== 3) return "--";
+        const inicio = new Date(partesData[0], partesData[1] - 1, partesData[2]);
+        const hoje = new Date();
+        hoje.setHours(0,0,0,0); 
+
+        let anos = hoje.getFullYear() - inicio.getFullYear();
+        let meses = hoje.getMonth() - inicio.getMonth();
+        let dias = hoje.getDate() - inicio.getDate();
+
+        if (dias < 0) { meses--; const u = new Date(hoje.getFullYear(), hoje.getMonth(), 0).getDate(); dias += u; }
+        if (meses < 0) { anos--; meses += 12; }
+        if (anos < 0) return "Data futura"; 
+
+        let p = [];
+        if (anos > 0) p.push(`${anos} ano${anos > 1 ? 's' : ''}`);
+        if (meses > 0) p.push(`${meses} mês${meses !== 1 ? 'es' : ''}`);
+        if (dias > 0) p.push(`${dias} dia${dias > 1 ? 's' : ''}`);
+        
+        if (!p.length) return "Primeiro dia!";
+        if (p.length === 1) return p[0];
+        const ultimo = p.pop();
+        return p.join(', ') + ' e ' + ultimo;
+    }
+};
+
+// ================================
+// SYSTEM MANAGER
+// ================================
+const System = {
+    showToast(message, type = 'success') {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = `toast ${type}`;
+        let icon = type==='success'?'check-circle':(type==='error'?'times-circle':'info-circle');
+        let title = type==='success'?'Sucesso':(type==='error'?'Erro':'Informação');
+        let color = type==='success'?'var(--success)':(type==='error'?'var(--danger)':'var(--primary)');
+        t.innerHTML = `<i class="fas fa-${icon}" style="color:${color}"></i><div class="toast-content"><h4>${title}</h4><p>${message}</p></div>`;
+        c.appendChild(t);
+        setTimeout(() => { t.style.animation = 'fadeOut 0.3s forwards'; setTimeout(() => t.remove(), 300); }, 4000);
+    },
+
+    async api(action, data = {}) {
+        try {
+            const r = await fetch(API_URL, { method: "POST", body: JSON.stringify({ action, ...data }) });
+            return await r.json();
+        } catch (e) {
+            console.error("API:", e);
+            this.showToast("Erro de conexão.", "error");
+            return { error: e.toString() };
+        }
+    },
+
+    showLoad(state) { 
+        document.getElementById('loader').style.display = state ? 'flex' : 'none'; 
+    },
+
+    switchTab(id, el) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById('tab-' + id).classList.add('active');
+        el.classList.add('active');
+        
+        if(id === 'ocorrencia') {
+            toggleForm();
+            TableManager.instances.ocorrencias.loadData();
+        }
+        
+        if(id === 'consulta') {
+            // Carrega ambas as tabelas quando acessar a aba de histórico geral
+            TableManager.instances.medidas.loadData();
+            TableManager.instances.faltas.loadData();
+        }
+    },
+
+    // FUNÇÃO DE LOGIN
+    async login() {
+        const email = document.getElementById('login-email').value;
+        const senha = document.getElementById('login-senha').value;
+        
+        if(!email || !senha) return this.showToast("Informe email e senha.", "info");
+        
+        this.showLoad(true);
+        // Chama a API com a ação 'login'
+        const r = await this.api("login", { email: email, senha: senha });
+        this.showLoad(false);
+        
+        if (r && r.ok) {
+            // Sucesso
+            document.getElementById('login-screen').style.display = 'none'; // Esconde login
+            document.querySelector('.main').classList.add('authenticated'); // Libera a tela principal
+            this.showToast(`Bem-vindo, ${r.usuario.nome}!`);
+            
+            // Atualiza sidebar com dados do usuário
+            document.getElementById('user-name-display').innerText = r.usuario.nome;
+            document.getElementById('user-email-display').innerText = r.usuario.email;
+            document.getElementById('user-avatar-initial').innerText = r.usuario.nome.charAt(0).toUpperCase();
+
+            // Carrega dados iniciais que estavam pausados
+            TableManager.instances.colaboradores.loadData();
+        } else {
+            this.showToast("Acesso Negado. Verifique suas credenciais.", "error");
+        }
+    }
+};
+
+// ================================
+// TABLE MANAGER (Paginação Genérica)
+// ================================
+class TableManager {
+    constructor(config) {
+        this.config = config;
+        this.data = [];
+        this.filteredData = [];
+        this.currentPage = 1;
+        this.itemsPerPage = parseInt(document.getElementById(config.itemsPerPageId).value) || 20;
+        this.totalPages = 1;
+        this.initialize();
+    }
+
+    initialize() {
+        if (this.config.searchInputId) {
+            document.getElementById(this.config.searchInputId).addEventListener('keyup', () => this.search());
+        }
+        if (this.config.itemsPerPageId) {
+            document.getElementById(this.config.itemsPerPageId).addEventListener('change', (e) => this.changeItemsPerPage(e.target.value));
+        }
+    }
+
+    async loadData() {
+        System.showLoad(true);
+        const result = await System.api(this.config.apiAction);
+        System.showLoad(false);
+        
+        if (!result || result.length === 0) { 
+            this.data = [];
+            this.filteredData = [];
+            this.updateTable([]);
+            this.updatePagination();
+            return; 
+        }
+        
+        this.data = result;
+        this.filteredData = [...result];
+        this.updatePagination();
+        this.renderCurrentPage();
+    }
+
+    search() {
+        const filter = document.getElementById(this.config.searchInputId).value.toUpperCase();
+        
+        if (filter) {
+            this.filteredData = this.data.filter(item => 
+                this.config.searchFields.some(field => 
+                    item[field] && item[field].toString().toUpperCase().includes(filter)
+                )
+            );
+        } else {
+            this.filteredData = [...this.data];
+        }
+        
+        this.currentPage = 1;
+        this.updatePagination();
+        this.renderCurrentPage();
+    }
+
+    changeItemsPerPage(value) {
+        this.itemsPerPage = parseInt(value);
+        this.currentPage = 1;
+        this.updatePagination();
+        this.renderCurrentPage();
+    }
+
+    changePage(page) {
+        if (page < 1 || page > this.totalPages || page === this.currentPage) return;
+        this.currentPage = page;
+        this.updatePagination();
+        this.renderCurrentPage();
+        
+        document.querySelector('.table-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    updatePagination() {
+        this.totalPages = Math.ceil(this.filteredData.length / this.itemsPerPage);
+        
+        const startIndex = (this.currentPage - 1) * this.itemsPerPage + 1;
+        const endIndex = Math.min(this.currentPage * this.itemsPerPage, this.filteredData.length);
+        const totalItems = this.filteredData.length;
+        
+        document.getElementById(this.config.paginationInfoId).textContent = 
+            `Mostrando ${startIndex}-${endIndex} de ${totalItems} ${this.config.itemName}`;
+        
+        this.renderPaginationControls();
+    }
+
+    renderPaginationControls() {
+        const paginationControls = document.getElementById(this.config.paginationControlsId);
+        paginationControls.innerHTML = '';
+        
+        // Botão anterior
+        const prevButton = document.createElement('button');
+        prevButton.className = 'pagination-btn';
+        prevButton.innerHTML = '<i class="fas fa-chevron-left"></i>';
+        prevButton.onclick = () => this.changePage(this.currentPage - 1);
+        prevButton.disabled = this.currentPage === 1;
+        paginationControls.appendChild(prevButton);
+        
+        // Botões de página
+        const maxVisiblePages = 5;
+        let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(this.totalPages, startPage + maxVisiblePages - 1);
+        
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+        
+        // Primeira página
+        if (startPage > 1) {
+            const firstButton = document.createElement('button');
+            firstButton.className = 'pagination-btn';
+            firstButton.textContent = '1';
+            firstButton.onclick = () => this.changePage(1);
+            paginationControls.appendChild(firstButton);
+            
+            if (startPage > 2) {
+                const ellipsis = document.createElement('span');
+                ellipsis.className = 'pagination-ellipsis';
+                ellipsis.textContent = '...';
+                paginationControls.appendChild(ellipsis);
+            }
+        }
+        
+        // Páginas numeradas
+        for (let i = startPage; i <= endPage; i++) {
+            const pageButton = document.createElement('button');
+            pageButton.className = 'pagination-btn';
+            if (i === this.currentPage) pageButton.classList.add('active');
+            pageButton.textContent = i;
+            pageButton.onclick = () => this.changePage(i);
+            paginationControls.appendChild(pageButton);
+        }
+        
+        // Última página
+        if (endPage < this.totalPages) {
+            if (endPage < this.totalPages - 1) {
+                const ellipsis = document.createElement('span');
+                ellipsis.className = 'pagination-ellipsis';
+                ellipsis.textContent = '...';
+                paginationControls.appendChild(ellipsis);
+            }
+            
+            const lastButton = document.createElement('button');
+            lastButton.className = 'pagination-btn';
+            lastButton.textContent = this.totalPages;
+            lastButton.onclick = () => this.changePage(this.totalPages);
+            paginationControls.appendChild(lastButton);
+        }
+        
+        // Botão próximo
+        const nextButton = document.createElement('button');
+        nextButton.className = 'pagination-btn';
+        nextButton.innerHTML = '<i class="fas fa-chevron-right"></i>';
+        nextButton.onclick = () => this.changePage(this.currentPage + 1);
+        nextButton.disabled = this.currentPage === this.totalPages || this.totalPages === 0;
+        paginationControls.appendChild(nextButton);
+    }
+
+    renderCurrentPage() {
+        const startIndex = (this.currentPage - 1) * this.itemsPerPage;
+        const endIndex = startIndex + this.itemsPerPage;
+        const pageData = this.filteredData.slice(startIndex, endIndex);
+        
+        this.updateTable(pageData);
+    }
+
+    updateTable(data) {
+        const tbody = document.getElementById(this.config.tbodyId);
+        tbody.innerHTML = "";
+        
+        if (!data || data.length === 0) { 
+            tbody.innerHTML = `<tr><td colspan="${this.config.columnsCount}" style="text-align:center; padding: 40px;">Nenhum ${this.config.itemName} encontrado.</td></tr>`; 
+            return; 
+        }
+        
+        data.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = this.config.renderRow(item);
+            tbody.appendChild(tr);
+        });
+    }
+}
+
+// Instâncias do TableManager
+TableManager.instances = {
+    colaboradores: new TableManager({
+        apiAction: "listarColaboradores",
+        searchInputId: "searchInput",
+        itemsPerPageId: "items-per-page",
+        paginationInfoId: "pagination-info",
+        paginationControlsId: "pagination-controls",
+        tbodyId: "corpo-todos-colab",
+        itemName: "colaborador",
+        columnsCount: 8,
+        searchFields: ['nome', 'mat', 'setor', 'funcao'],
+        renderRow: (colab) => `
+            <td><img src="${colab.foto||'https://via.placeholder.com/40'}" style="width:36px; height:36px; border-radius:50%; object-fit:cover;"></td>
+            <td><strong>${colab.mat}</strong></td>
+            <td>${colab.nome}</td>
+            <td>${colab.setor}</td>
+            <td>${colab.funcao}</td>
+            <td>${Utils.formatarDataBR(colab.adm)}</td>
+            <td><span class="badge ${colab.status==='Ativo'?'bg-meta':'bg-fora'}">${colab.status}</span></td>
+            <td>
+                <div class="table-actions">
+                    <button class="btn-secondary" onclick='abrirEdicao(${JSON.stringify(colab)})'>
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-secondary" style="color:var(--danger);" onclick="excluirColab('${colab.mat}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>`
+    }),
+
+    ocorrencias: new TableManager({
+        apiAction: "listarOcorrencias",
+        searchInputId: "searchOcorrenciaInput",
+        itemsPerPageId: "items-per-page-ocorrencias",
+        paginationInfoId: "pagination-info-ocorrencias",
+        paginationControlsId: "pagination-controls-ocorrencias",
+        tbodyId: "corpo-ocorrencias",
+        itemName: "ocorrência",
+        columnsCount: 7,
+        searchFields: ['matricula', 'tipo', 'obs', 'cat'],
+        renderRow: (oc) => {
+            const badgeClass = oc.cat === 'Disciplinar' ? 'bg-adv' : 'bg-fora';
+            const badgeText = oc.cat === 'Disciplinar' ? 'Disciplinar' : 'Falta';
+            
+            return `
+                <td>${Utils.formatarDataBR(oc.data)}</td>
+                <td><strong>${oc.matricula}</strong></td>
+                <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+                <td>${oc.tipo}</td>
+                <td>${oc.dias > 0 ? oc.dias + ' dias' : '-'}</td>
+                <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${oc.obs || ''}">
+                    ${oc.obs || '-'}
+                </td>
+                <td>
+                    <div class="table-actions">
+                        <button class="btn-secondary" onclick='abrirEdicaoOcorrencia(${JSON.stringify(oc)})'>
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="btn-secondary" style="color:var(--danger); border-color:var(--danger);" onclick="excluirOcorrencia('${oc.id}')">
+                            <i class="fas fa-trash"></i> Excluir
+                        </button>
+                    </div>
+                </td>`;
+        }
+    }),
+
+    medidas: new TableManager({
+        apiAction: "listarMedidas",
+        searchInputId: "searchMedidasInput",
+        itemsPerPageId: "items-per-page-medidas",
+        paginationInfoId: "pagination-info-medidas",
+        paginationControlsId: "pagination-controls-medidas",
+        tbodyId: "corpoMedidas",
+        itemName: "medida disciplinar",
+        columnsCount: 5,
+        searchFields: ['matricula', 'tipo', 'motivo'],
+        renderRow: (item) => `
+            <td>${Utils.formatarDataBR(item.data)}</td>
+            <td><strong>${item.matricula}</strong></td>
+            <td><span class="badge bg-adv">${item.tipo}</span></td>
+            <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.motivo || ''}">
+                ${item.motivo || '-'}
+            </td>
+            <td>${item.dias || '0'}</td>`
+    }),
+
+    faltas: new TableManager({
+        apiAction: "listarFaltas",
+        searchInputId: "searchFaltasInput",
+        itemsPerPageId: "items-per-page-faltas",
+        paginationInfoId: "pagination-info-faltas",
+        paginationControlsId: "pagination-controls-faltas",
+        tbodyId: "corpoFaltas",
+        itemName: "falta",
+        columnsCount: 4,
+        searchFields: ['matricula', 'tipo', 'obs'],
+        renderRow: (item) => `
+            <td>${Utils.formatarDataBR(item.data)}</td>
+            <td><strong>${item.matricula}</strong></td>
+            <td><span class="badge bg-fora">${item.tipo}</span></td>
+            <td style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.obs || ''}">
+                ${item.obs || '-'}
+            </td>`
+    })
+};
+
+// ================================
+// EXCEL EXPORTER (Exportação Única)
+// ================================
+const ExcelExporter = {
+    exportColaboradores() {
+        this.exportData(
+            TableManager.instances.colaboradores.data,
+            [
+                { header: 'Matrícula', key: 'mat' },
+                { header: 'Nome', key: 'nome' },
+                { header: 'Setor', key: 'setor' },
+                { header: 'Função', key: 'funcao' },
+                { header: 'Admissão', key: 'adm', formatter: Utils.formatarDataBR },
+                { header: 'Status', key: 'status' }
+            ],
+            "colaboradores",
+            "Exportação de colaboradores concluída!"
+        );
+    },
+
+    exportOcorrencias() {
+        this.exportData(
+            TableManager.instances.ocorrencias.data,
+            [
+                { header: 'Data', key: 'data', formatter: Utils.formatarDataBR },
+                { header: 'Matrícula', key: 'matricula' },
+                { header: 'Categoria', key: 'cat', formatter: (val) => val === 'Falta' ? 'Falta/Ausência' : 'Medida Disciplinar' },
+                { header: 'Tipo', key: 'tipo' },
+                { header: 'Dias', key: 'dias' },
+                { header: 'Observação', key: 'obs' }
+            ],
+            "ocorrencias",
+            "Exportação de ocorrências concluída!"
+        );
+    },
+
+    exportMedidas() {
+        this.exportData(
+            TableManager.instances.medidas.data,
+            [
+                { header: 'Data', key: 'data', formatter: Utils.formatarDataBR },
+                { header: 'Matrícula', key: 'matricula' },
+                { header: 'Tipo', key: 'tipo' },
+                { header: 'Motivo', key: 'motivo' },
+                { header: 'Dias de Suspensão', key: 'dias' }
+            ],
+            "medidas_disciplinares",
+            "Exportação de medidas disciplinares concluída!"
+        );
+    },
+
+    exportFaltas() {
+        this.exportData(
+            TableManager.instances.faltas.data,
+            [
+                { header: 'Data', key: 'data', formatter: Utils.formatarDataBR },
+                { header: 'Matrícula', key: 'matricula' },
+                { header: 'Tipo', key: 'tipo' },
+                { header: 'Observação', key: 'obs' }
+            ],
+            "faltas",
+            "Exportação de faltas concluída!"
+        );
+    },
+
+    exportData(data, columns, filename, successMessage) {
+        if (!data || data.length === 0) {
+            System.showToast(`Não há dados para exportar.`, "info");
+            return;
+        }
+        
+        System.showLoad(true);
+        
+        try {
+            const dadosParaExcel = data.map(item => {
+                const row = {};
+                columns.forEach(col => {
+                    row[col.header] = col.formatter 
+                        ? col.formatter(item[col.key]) 
+                        : item[col.key] || '';
+                });
+                return row;
+            });
+            
+            const ws = XLSX.utils.json_to_sheet(dadosParaExcel);
+            const wscols = columns.map(() => ({ wch: 20 }));
+            ws['!cols'] = wscols;
+            
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, filename);
+            
+            const dataAtual = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            const nomeArquivo = `${filename}_${dataAtual}.xlsx`;
+            
+            XLSX.writeFile(wb, nomeArquivo);
+            System.showToast(successMessage, "success");
+        } catch (error) {
+            console.error("Erro ao exportar Excel:", error);
+            System.showToast("Erro ao exportar para Excel.", "error");
+        } finally {
+            System.showLoad(false);
+        }
+    }
+};
+
+// ================================
+// FUNÇÕES DE OCORRÊNCIAS
+// ================================
+function toggleForm() {
+    const c = document.getElementById('o-cat').value;
+    const b = document.getElementById('box-dias');
+    const t = document.getElementById('o-tipo');
+    if(c === 'Falta') {
+        b.style.display = 'none';
+        t.innerHTML = `<option value="">Selecione...</option><option>Justificada – Atestado</option><option>Justificada – Declaração</option><option>Não Justificada</option>`;
+    } else {
+        b.style.display = 'block';
+        t.innerHTML = `<option value="">Selecione...</option><option>Advertência Verbal</option><option>Advertência Escrita</option><option>Suspensão</option>`;
+    }
+}
+
+function toggleFormEdit() {
+    const c = document.getElementById('edit-ocorrencia-cat').value;
+    const b = document.getElementById('box-dias-edit');
+    const t = document.getElementById('edit-ocorrencia-tipo');
+    if(c === 'Falta') {
+        b.style.display = 'none';
+        t.innerHTML = `<option value="">Selecione...</option><option>Justificada – Atestado</option><option>Justificada – Declaração</option><option>Não Justificada</option>`;
+    } else {
+        b.style.display = 'block';
+        t.innerHTML = `<option value="">Selecione...</option><option>Advertência Verbal</option><option>Advertência Escrita</option><option>Suspensão</option>`;
+    }
+}
+
+async function salvarOcorrenciaGeral() {
+    const mat = document.getElementById('o-mat').value;
+    const dataOcorr = document.getElementById('o-data').value;
+    const tipo = document.getElementById('o-tipo').value;
+    
+    if(!mat || !dataOcorr || !tipo) {
+        return System.showToast("Preencha todos os campos obrigatórios.", "info");
+    }
+    
+    const dados = {
+        cat: document.getElementById('o-cat').value,
+        matricula: mat,
+        data: dataOcorr,
+        tipo: tipo,
+        dias: document.getElementById('o-dias').value || 0,
+        obs: document.getElementById('o-obs').value || ""
+    };
+    
+    System.showLoad(true);
+    const r = await System.api("salvarOcorrencia", { dados });
+    System.showLoad(false);
+    
+    if(r?.ok) {
+        System.showToast("Ocorrência salva com sucesso!");
+        document.getElementById('o-mat').value = "";
+        document.getElementById('o-data').value = new Date().toISOString().split('T')[0];
+        document.getElementById('o-obs').value = "";
+        document.getElementById('o-dias').value = "0";
+        toggleForm();
+        TableManager.instances.ocorrencias.loadData();
+    } else { 
+        System.showToast("Erro ao salvar: " + (r?.error || "Tente novamente"), "error"); 
+    }
+}
+
+function abrirEdicaoOcorrencia(ocorrencia) {
+    document.getElementById('edit-ocorrencia-cat').value = ocorrencia.cat || "Falta";
+    document.getElementById('edit-ocorrencia-mat').value = ocorrencia.matricula || "";
+    document.getElementById('edit-ocorrencia-data').value = ocorrencia.data ? ocorrencia.data.split('T')[0] : new Date().toISOString().split('T')[0];
+    document.getElementById('edit-ocorrencia-tipo').value = ocorrencia.tipo || "";
+    document.getElementById('edit-ocorrencia-dias').value = ocorrencia.dias || "0";
+    document.getElementById('edit-ocorrencia-obs').value = ocorrencia.obs || "";
+    document.getElementById('edit-ocorrencia-id').value = ocorrencia.id || "";
+    
+    toggleFormEdit();
+    
+    const m = document.getElementById('modal-editar-ocorrencia'); 
+    m.style.display = 'flex'; 
+    setTimeout(() => m.classList.add('show'), 10);
+    setTimeout(() => document.getElementById('edit-ocorrencia-cat').focus(), 100);
+}
+
+function fecharModalOcorrencia() { 
+    const m = document.getElementById('modal-editar-ocorrencia'); 
+    m.classList.remove('show'); 
+    setTimeout(() => m.style.display = 'none', 200); 
+}
+
+async function salvarEdicaoOcorrencia() {
+    const id = document.getElementById('edit-ocorrencia-id').value;
+    const matricula = document.getElementById('edit-ocorrencia-mat').value;
+    const dataOcorr = document.getElementById('edit-ocorrencia-data').value;
+    const tipo = document.getElementById('edit-ocorrencia-tipo').value;
+    
+    if(!id || !matricula || !dataOcorr || !tipo) {
+        return System.showToast("Todos os campos são obrigatórios.", "error");
+    }
+    
+    const dados = {
+        id: id,
+        cat: document.getElementById('edit-ocorrencia-cat').value,
+        matricula: matricula,
+        data: dataOcorr,
+        tipo: tipo,
+        dias: document.getElementById('edit-ocorrencia-dias').value || 0,
+        obs: document.getElementById('edit-ocorrencia-obs').value || ""
+    };
+    
+    System.showLoad(true);
+    const r = await System.api("editarOcorrencia", { dados });
+    System.showLoad(false);
+    
+    if(r?.ok) { 
+        System.showToast("Ocorrência atualizada com sucesso!"); 
+        fecharModalOcorrencia(); 
+        TableManager.instances.ocorrencias.loadData(); 
+    } else { 
+        System.showToast("Erro ao atualizar: " + (r?.error || "Tente novamente"), "error"); 
+    }
+}
+
+async function excluirOcorrencia(id) {
+    if (!confirm(`Tem certeza que deseja excluir esta ocorrência?\nEsta ação não pode ser desfeita.`)) return;
+    
+    System.showLoad(true);
+    const r = await System.api("excluirOcorrencia", { id: id });
+    System.showLoad(false);
+    
+    if (r?.ok) { 
+        System.showToast("Ocorrência excluída com sucesso!"); 
+        TableManager.instances.ocorrencias.loadData(); 
+    } else { 
+        System.showToast("Erro ao excluir: " + (r?.error || "Tente novamente"), "error"); 
+    }
+}
+
+// ================================
+// FUNÇÕES DE COLABORADORES
+// ================================
+async function saveColab() {
+    const nome = document.getElementById('c-nome').value;
+    const mat = document.getElementById('c-mat').value;
+    if(!nome || !mat) return System.showToast("Preencha Nome e Matrícula.", "info");
+    
+    System.showLoad(true);
+    const dados = {
+        foto: document.getElementById('c-foto').value || "",
+        nome: nome,
+        mat: mat,
+        setor: document.getElementById('c-setor').value,
+        funcao: document.getElementById('c-funcao').value,
+        adm: document.getElementById('c-adm').value,
+        status: document.getElementById('c-status').value
+    };
+    const r = await System.api("cadastrarColaborador", { dados });
+    System.showLoad(false);
+    
+    if(r?.ok) {
+        System.showToast("Colaborador cadastrado!");
+        ['c-nome','c-mat','c-setor','c-funcao','c-adm','c-foto'].forEach(id => document.getElementById(id).value = "");
+        document.getElementById('img-preview').style.display = 'none';
+        TableManager.instances.colaboradores.loadData();
+    } else { System.showToast("Erro: " + (r?.error || "Desc"), "error"); }
+}
+
+function abrirEdicao(c) {
+    document.getElementById('edit-nome').value = c.nome || "";
+    document.getElementById('edit-mat').value = c.mat || "";
+    document.getElementById('edit-setor').value = c.setor || "";
+    document.getElementById('edit-funcao').value = c.funcao || "";
+    document.getElementById('edit-adm').value = c.adm ? c.adm.split('T')[0] : "";
+    document.getElementById('edit-status').value = c.status || "Ativo";
+    document.getElementById('edit-foto').value = c.foto || "";
+    
+    const preview = document.getElementById('edit-img-preview');
+    const fotoPreview = document.getElementById('edit-foto-preview');
+    
+    if (c.foto) {
+        if (c.foto.startsWith('data:image')) {
+            preview.src = c.foto;
+            preview.style.display = 'block';
+            fotoPreview.style.display = 'none';
+        } else if (c.foto.startsWith('http')) {
+            preview.src = c.foto;
+            preview.style.display = 'block';
+            fotoPreview.textContent = c.foto;
+            fotoPreview.style.display = 'block';
+        } else {
+            preview.style.display = 'none';
+            fotoPreview.style.display = 'none';
+        }
+    } else {
+        preview.style.display = 'none';
+        fotoPreview.style.display = 'none';
+    }
+    
+    document.getElementById('usar-webcam-checkbox').checked = false;
+    document.getElementById('responsabilidade-checkbox').checked = false;
+    document.getElementById('edit-foto-base64').value = "";
+    
+    const m = document.getElementById('modal-editar'); 
+    m.style.display = 'flex'; 
+    setTimeout(() => m.classList.add('show'), 10);
+    setTimeout(() => document.getElementById('edit-nome').focus(), 100);
+}
+
+function fecharModal() { 
+    const m = document.getElementById('modal-editar'); 
+    m.classList.remove('show'); 
+    CameraManager.stopStream('edit');
+    setTimeout(() => m.style.display = 'none', 200); 
+}
+
+async function salvarEdicao() {
+    const matricula = document.getElementById('edit-mat').value;
+    const nome = document.getElementById('edit-nome').value;
+    
+    if(!matricula || !nome) {
+        return System.showToast("Nome e Matrícula são obrigatórios", "error");
+    }
+    
+    let foto = document.getElementById('edit-foto-base64').value;
+    if (!foto) foto = document.getElementById('edit-foto').value;
+    
+    const dados = { 
+        matricula: matricula,
+        nome: nome,
+        setor: document.getElementById('edit-setor').value,
+        funcao: document.getElementById('edit-funcao').value,
+        adm: document.getElementById('edit-adm').value,
+        status: document.getElementById('edit-status').value,
+        foto: foto
+    };
+    
+    System.showLoad(true);
+    const r = await System.api("editarColaborador", { dados });
+    System.showLoad(false);
+    
+    if(r?.ok) { 
+        System.showToast("Colaborador atualizado com sucesso!"); 
+        fecharModal(); 
+        TableManager.instances.colaboradores.loadData(); 
+    } else { 
+        System.showToast("Erro ao atualizar: " + (r?.error || "Tente novamente"), "error"); 
+    }
+}
+
+async function excluirColab(mat) {
+    if (!confirm(`Tem certeza que deseja excluir o colaborador ${mat}?`)) return;
+    
+    System.showLoad(true);
+    const r = await System.api("excluirColaborador", { matricula: mat });
+    System.showLoad(false);
+    
+    if (r?.ok) { 
+        System.showToast("Colaborador excluído com sucesso!"); 
+        TableManager.instances.colaboradores.loadData(); 
+    } else { 
+        System.showToast("Erro ao excluir: " + (r?.error || "Tente novamente"), "error"); 
+    }
+}
+
+// ================================
+// DASHBOARD E RELATÓRIOS
+// ================================
+function toggleDashFiltro() {
+    const t = document.getElementById('dash-tipo').value;
+    const im = document.getElementById('dash-periodo');
+    const ia = document.getElementById('dash-ano-input');
+    if (t === 'mensal') { im.style.display = 'block'; ia.style.display = 'none'; }
+    else { im.style.display = 'none'; ia.style.display = 'block'; if(!ia.value) ia.value = new Date().getFullYear(); }
+}
+
+function limparGraficosDashboard() {
+    ['chartTipo', 'chartTendencia', 'chartSetor'].forEach(id => { 
+        if (charts[id]) { charts[id].destroy(); charts[id] = null; } 
+    });
+}
+
+function renderChart(id, type, labels, data, colors) {
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    if (charts[id]) charts[id].destroy();
+    charts[id] = new Chart(ctx.getContext('2d'), {
+        type: type,
+        data: { labels: labels, datasets: [{ data: data, backgroundColor: colors, borderColor: type === 'line' ? colors : 'transparent', borderWidth: type === 'line' ? 2 : 0, tension: 0.3, fill: type === 'line' }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: type === 'doughnut', position: 'bottom' } }, scales: type !== 'doughnut' ? { y: { beginAtZero: true }, x: { grid: { display: false } } } : {} }
+    });
+}
+
+async function carregarDashboard() {
+    limparGraficosDashboard();
+    System.showLoad(true);
+    
+    const tipo = document.getElementById('dash-tipo').value;
+    let payload = {};
+    if (tipo === 'mensal') {
+        let val = document.getElementById('dash-periodo').value || new Date().toISOString().slice(0,7);
+        document.getElementById('dash-periodo').value = val;
+        payload = { periodo: val, tipo: 'mensal' };
+        document.getElementById('lbl-ind-geral').innerText = "Indicador Geral (Mês)";
+    } else {
+        let val = document.getElementById('dash-ano-input').value || new Date().getFullYear();
+        document.getElementById('dash-ano-input').value = val;
+        payload = { ano: val, tipo: 'anual' };
+        document.getElementById('lbl-ind-geral').innerText = "Indicador Geral (Ano)";
+    }
+    const r = await System.api("dashboard", payload);
+    System.showLoad(false);
+    
+    if(!r) return;
+    document.getElementById('d-ind-geral').innerText = (r.kpi?.geral || 0).toFixed(2) + "%";
+    document.getElementById('d-meta-status').innerHTML = r.kpi?.metaStatus || "--";
+    document.getElementById('d-total-medidas').innerText = r.kpi?.totalMedidas || 0;
+    document.getElementById('d-setor-critico').innerText = r.kpi?.setorCritico || "--";
+    
+    const tb = document.querySelector('#tab-top5 tbody'); tb.innerHTML = "";
+    if (r.top5?.length) r.top5.forEach(t => tb.innerHTML += `<tr><td>${t.nome}</td><td>${t.setor}</td><td style="color:var(--danger);font-weight:bold;">${t.qtd}</td></tr>`);
+    else tb.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#94a3b8">Sem dados.</td></tr>';
+    
+    if (r.graficos) {
+        if(r.graficos.tipo) renderChart("chartTipo", "doughnut", r.graficos.tipo.labels, r.graficos.tipo.values, ["#3b82f6","#f59e0b","#ef4444"]);
+        if(r.graficos.setor) renderChart("chartSetor", "bar", r.graficos.setor.labels, r.graficos.setor.values, "#8b5cf6");
+        if (r.graficos.tendencia) renderChart("chartTendencia", "line", r.graficos.tendencia.labels, r.graficos.tendencia.values, "#2563eb");
+    }
+}
+
+async function gerarRelatorioDiario() {
+    const dataFiltro = document.getElementById('filtro-data').value;
+    if (!dataFiltro) return System.showToast("Data obrigatória.", "info");
+    System.showLoad(true);
+    const r = await System.api("relatorioDiario", { data: dataFiltro, setor: document.getElementById('filtro-setor').value, colab: document.getElementById('filtro-colab').value });
+    System.showLoad(false);
+    const c = document.getElementById('corpoRelatorio'); c.innerHTML = "";
+    if (r?.length) r.forEach(x => c.innerHTML += `<tr><td>${x.nome}</td><td>${x.matricula}</td><td>${x.setor}</td><td><span class="badge bg-fora">${x.tipo}</span></td><td>${x.obs}</td></tr>`);
+    else c.innerHTML = '<tr><td colspan="5" style="text-align:center;">Nada encontrado.</td></tr>';
+}
+
+async function gerarRelatorioMensal() {
+    const periodo = document.getElementById('m-periodo').value;
+    if(!periodo) return System.showToast("Período obrigatório.", "info");
+    System.showLoad(true);
+    const r = await System.api("relatorioMensal", { periodo: periodo });
+    System.showLoad(false);
+    document.getElementById('st-atestado').innerText = r?.totais?.atestados || 0;
+    document.getElementById('st-declaracao').innerText = r?.totais?.declaracoes || 0;
+    document.getElementById('st-falta').innerText = r?.totais?.faltas || 0;
+    document.getElementById('st-perc').innerText = (r?.totais?.percentualGeral || 0).toFixed(2) + "%";
+    const c = document.getElementById('corpoMensal'); c.innerHTML = "";
+    if (r?.linhas?.length) r.linhas.forEach(x => c.innerHTML += `<tr><td>${x.nome}</td><td>${x.setor}</td><td>${x.atestados}</td><td>${x.declaracoes}</td><td>${x.faltas}</td><td><strong>${x.percentual?.toFixed(2)}%</strong></td><td><span class="badge ${(x.percentual||0)<=1.92?'bg-meta':'bg-fora'}">${(x.percentual||0)<=1.92?'OK':'FORA'}</span></td></tr>`);
+    else c.innerHTML = '<tr><td colspan="7" style="text-align:center;">Sem dados.</td></tr>';
+}
+
+async function gerarRelatorioAnual() {
+    const ano = document.getElementById('a-ano').value;
+    System.showLoad(true);
+    const r = await System.api("relatorioAnual", { ano: ano });
+    System.showLoad(false);
+    if (!r) return;
+    document.getElementById('an-total-faltas').innerText = r.resumo?.totalFaltas || 0;
+    document.getElementById('an-setor-critico').innerText = r.resumo?.setorCritico || "--";
+    document.getElementById('an-total-medidas').innerText = r.resumo?.totalMedidas || 0;
+    document.getElementById('an-total-fora').innerText = r.resumo?.qtdAcimaMeta || 0;
+    const c = document.querySelector('#rankColabs tbody'); c.innerHTML = "";
+    if(r.rankingColabs?.length) r.rankingColabs.forEach(x => c.innerHTML += `<tr><td>${x.nome}</td><td>${x.total}</td><td>${x.perc}%</td></tr>`);
+    const s = document.querySelector('#rankSetores tbody'); s.innerHTML = "";
+    if(r.rankingSetores?.length) r.rankingSetores.forEach(x => s.innerHTML += `<tr><td>${x.nome}</td><td>${x.abs}%</td></tr>`);
+}
+
+// Função para carregar tabelas (mantida para compatibilidade)
+async function carregarTabelas() {
+    // Agora carrega através do TableManager
+    TableManager.instances.medidas.loadData();
+    TableManager.instances.faltas.loadData();
+}
+
+async function gerarFicha() {
+    const mat = document.getElementById('busca-mat').value;
+    if(!mat) return System.showToast("Digite a matrícula.", "info");
+    System.showLoad(true);
+    const r = await System.api("ficha", { matricula: mat });
+    System.showLoad(false);
+    if(!r?.colaborador) return System.showToast("Não encontrado.", "error");
+    document.getElementById('ficha-container').style.display = 'block';
+    document.getElementById('acoes-ficha').style.display = 'flex';
+    const c = r.colaborador;
+    document.getElementById('f-foto').src = c.foto || "https://via.placeholder.com/150";
+    document.getElementById('f-nome').innerText = c.nome;
+    document.getElementById('f-setor').innerText = c.setor;
+    document.getElementById('f-cargo').innerText = c.funcao;
+    document.getElementById('f-tempo').innerText = Utils.calcularTempoDetalhado(c.adm);
+    document.getElementById('f-adm').innerText = Utils.formatarDataBR(c.adm);
+    document.getElementById('f-abs').innerText = (r.absenteismo || 0).toFixed(2) + "%";
+    document.getElementById('f-meta-status').innerHTML = (r.absenteismo || 0) <= 1.92 ? '<span class="badge bg-meta">DENTRO</span>' : '<span class="badge bg-fora">FORA</span>';
+    document.getElementById('f-total-faltas').innerText = `Total Faltas (Ano): ${r.totalFaltas || 0}`;
+    const mh = r.medidas?.length ? r.medidas.map(m => `<div>• ${Utils.formatarDataBR(m.data)} - ${m.tipo}</div>`).join('') : "Nenhuma medida.";
+    document.getElementById('f-total-medidas').innerHTML = mh;
+    if (r.graficoEvolucao) renderChart("chartFicha", "line", r.graficoEvolucao.labels, r.graficoEvolucao.values, "#2563eb");
+}
+
+function exportarPDF() {
+    html2pdf().set({ margin: 10, filename: `Ficha.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4' } }).from(document.getElementById('ficha-container')).save();
+}
+
+// INITIALIZATION
+// ================================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log("Sistema RH PRO iniciando...");
+    
+    const hoje = new Date().toISOString().split('T')[0];
+    ['o-data','filtro-data','c-adm','edit-ocorrencia-data'].forEach(id => document.getElementById(id).value = hoje);
+    document.getElementById('dash-periodo').value = hoje.slice(0,7);
+    document.getElementById('dash-ano-input').value = new Date().getFullYear();
+    document.getElementById('m-periodo').value = hoje.slice(0,7);
+    toggleForm();
+    toggleDashFiltro();
+    
+    // NOTA: O carregamento de dados foi movido para após o login com sucesso.
+    console.log("Aguardando autenticação...");
+});
+  </script>
+
+</body>
+</html>
