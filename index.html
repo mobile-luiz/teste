@@ -660,95 +660,24 @@
     <section id="tab-consulta" class="tab-content">
       <div class="card">
         <h2><i class="fas fa-gavel" style="color:var(--primary)"></i> Histórico: Medidas Disciplinares</h2>
-        
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap: wrap; gap:15px;">
-          <div class="export-buttons">
-            <button class="btn-excel" onclick="ExcelExporter.exportMedidas()">
-              <i class="fas fa-file-excel"></i> Exportar Excel
-            </button>
-            <button class="btn-secondary" onclick="TableManager.instances.medidas.loadData()">
-              <i class="fas fa-sync-alt"></i> Atualizar
-            </button>
-          </div>
-          
-          <div class="search-box" style="flex: 1; max-width: 400px; margin-bottom: 0;">
-            <i class="fas fa-search"></i>
-            <input type="text" id="searchMedidasInput" onkeyup="TableManager.instances.medidas.search()" placeholder="Buscar por Matrícula, Tipo ou Motivo...">
-          </div>
-        </div>
-        
         <div class="table-container">
           <table>
             <thead>
-              <tr><th>Data</th><th>Matrícula</th><th>Tipo</th><th>Motivo</th><th>Dias</th></tr>
+              <tr><th>Data</th><th>Mat</th><th>Tipo</th><th>Motivo</th><th>Dias</th></tr>
             </thead>
             <tbody id="corpoMedidas"></tbody>
           </table>
         </div>
-
-        <div class="pagination-container" id="paginacao-medidas">
-          <div class="pagination-info" id="pagination-info-medidas">
-            Mostrando 0 de 0 medidas
-          </div>
-          
-          <div class="items-per-page">
-            <span style="font-size: 13px; color: var(--text-light);">Itens por página:</span>
-            <select id="items-per-page-medidas" onchange="TableManager.instances.medidas.changeItemsPerPage(this.value)">
-              <option value="10">10</option>
-              <option value="20" selected>20</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
-          </div>
-          
-          <div class="pagination-controls" id="pagination-controls-medidas"></div>
-        </div>
       </div>
-      
-      <div class="card" style="margin-top: 30px;">
+      <div class="card">
         <h2><i class="fas fa-history" style="color:var(--primary)"></i> Histórico: Faltas</h2>
-        
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap: wrap; gap:15px;">
-          <div class="export-buttons">
-            <button class="btn-excel" onclick="ExcelExporter.exportFaltas()">
-              <i class="fas fa-file-excel"></i> Exportar Excel
-            </button>
-            <button class="btn-secondary" onclick="TableManager.instances.faltas.loadData()">
-              <i class="fas fa-sync-alt"></i> Atualizar
-            </button>
-          </div>
-          
-          <div class="search-box" style="flex: 1; max-width: 400px; margin-bottom: 0;">
-            <i class="fas fa-search"></i>
-            <input type="text" id="searchFaltasInput" onkeyup="TableManager.instances.faltas.search()" placeholder="Buscar por Matrícula, Tipo ou Observação...">
-          </div>
-        </div>
-        
         <div class="table-container">
           <table>
             <thead>
-              <tr><th>Data</th><th>Matrícula</th><th>Tipo</th><th>Observação</th></tr>
+              <tr><th>Data</th><th>Mat</th><th>Tipo</th><th>Obs</th></tr>
             </thead>
             <tbody id="corpoFaltas"></tbody>
           </table>
-        </div>
-
-        <div class="pagination-container" id="paginacao-faltas">
-          <div class="pagination-info" id="pagination-info-faltas">
-            Mostrando 0 de 0 faltas
-          </div>
-          
-          <div class="items-per-page">
-            <span style="font-size: 13px; color: var(--text-light);">Itens por página:</span>
-            <select id="items-per-page-faltas" onchange="TableManager.instances.faltas.changeItemsPerPage(this.value)">
-              <option value="10">10</option>
-              <option value="20" selected>20</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
-          </div>
-          
-          <div class="pagination-controls" id="pagination-controls-faltas"></div>
         </div>
       </div>
     </section>
@@ -960,12 +889,6 @@ const System = {
             toggleForm();
             TableManager.instances.ocorrencias.loadData();
         }
-        
-        if(id === 'consulta') {
-            // Carrega ambas as tabelas quando acessar a aba de histórico geral
-            TableManager.instances.medidas.loadData();
-            TableManager.instances.faltas.loadData();
-        }
     },
 
     // FUNÇÃO DE LOGIN
@@ -1014,12 +937,8 @@ class TableManager {
     }
 
     initialize() {
-        if (this.config.searchInputId) {
-            document.getElementById(this.config.searchInputId).addEventListener('keyup', () => this.search());
-        }
-        if (this.config.itemsPerPageId) {
-            document.getElementById(this.config.itemsPerPageId).addEventListener('change', (e) => this.changeItemsPerPage(e.target.value));
-        }
+        document.getElementById(this.config.searchInputId).addEventListener('keyup', () => this.search());
+        document.getElementById(this.config.itemsPerPageId).addEventListener('change', (e) => this.changeItemsPerPage(e.target.value));
     }
 
     async loadData() {
@@ -1251,46 +1170,151 @@ TableManager.instances = {
                     </div>
                 </td>`;
         }
-    }),
-
-    medidas: new TableManager({
-        apiAction: "listarMedidas",
-        searchInputId: "searchMedidasInput",
-        itemsPerPageId: "items-per-page-medidas",
-        paginationInfoId: "pagination-info-medidas",
-        paginationControlsId: "pagination-controls-medidas",
-        tbodyId: "corpoMedidas",
-        itemName: "medida disciplinar",
-        columnsCount: 5,
-        searchFields: ['matricula', 'tipo', 'motivo'],
-        renderRow: (item) => `
-            <td>${Utils.formatarDataBR(item.data)}</td>
-            <td><strong>${item.matricula}</strong></td>
-            <td><span class="badge bg-adv">${item.tipo}</span></td>
-            <td style="max-width: 250px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.motivo || ''}">
-                ${item.motivo || '-'}
-            </td>
-            <td>${item.dias || '0'}</td>`
-    }),
-
-    faltas: new TableManager({
-        apiAction: "listarFaltas",
-        searchInputId: "searchFaltasInput",
-        itemsPerPageId: "items-per-page-faltas",
-        paginationInfoId: "pagination-info-faltas",
-        paginationControlsId: "pagination-controls-faltas",
-        tbodyId: "corpoFaltas",
-        itemName: "falta",
-        columnsCount: 4,
-        searchFields: ['matricula', 'tipo', 'obs'],
-        renderRow: (item) => `
-            <td>${Utils.formatarDataBR(item.data)}</td>
-            <td><strong>${item.matricula}</strong></td>
-            <td><span class="badge bg-fora">${item.tipo}</span></td>
-            <td style="max-width: 300px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.obs || ''}">
-                ${item.obs || '-'}
-            </td>`
     })
+};
+
+// ================================
+// CAMERA MANAGER (Webcam Unificada)
+// ================================
+const CameraManager = {
+    streams: {},
+    
+    async startCam(context = 'cadastro') {
+        const videoId = context === 'edit' ? 'edit-webcam' : 'webcam';
+        const previewId = context === 'edit' ? 'edit-img-preview' : 'img-preview';
+        const snapId = context === 'edit' ? 'edit-snap' : 'snap';
+        
+        const video = document.getElementById(videoId);
+        const preview = document.getElementById(previewId);
+        
+        video.style.display = 'block';
+        preview.style.display = 'none';
+        
+        try {
+            if (this.streams[context]) {
+                this.streams[context].getTracks().forEach(track => track.stop());
+            }
+            
+            this.streams[context] = await navigator.mediaDevices.getUserMedia({ 
+                video: context === 'edit' ? { width: 320, height: 240 } : true 
+            });
+            video.srcObject = this.streams[context];
+            
+            let snapBtn = document.getElementById(snapId);
+            if (!snapBtn && context === 'edit') {
+                snapBtn = document.createElement('button');
+                snapBtn.id = snapId;
+                snapBtn.className = 'btn-secondary';
+                snapBtn.style.cssText = 'display:none; background:var(--success); color:white; border-color:var(--success); margin: 0 5px;';
+                snapBtn.innerHTML = '<i class="fas fa-check"></i> Capturar Foto';
+                snapBtn.onclick = () => this.capture(context);
+                document.querySelector('#edit-photo-section > div').appendChild(snapBtn);
+            }
+            if (snapBtn) snapBtn.style.display = 'inline-flex';
+            
+        } catch (e) { 
+            System.showToast("Erro na câmera: " + e.message, "error");
+            if (context === 'edit') document.getElementById('usar-webcam-checkbox').checked = false;
+        }
+    },
+
+    capture(context = 'cadastro') {
+        const canvasId = context === 'edit' ? 'edit-canvas' : 'canvas';
+        const videoId = context === 'edit' ? 'edit-webcam' : 'webcam';
+        const previewId = context === 'edit' ? 'edit-img-preview' : 'img-preview';
+        const snapId = context === 'edit' ? 'edit-snap' : 'snap';
+        const fotoInputId = context === 'edit' ? 'edit-foto-base64' : 'c-foto';
+        
+        const canvas = document.getElementById(canvasId);
+        const context2d = canvas.getContext('2d');
+        const video = document.getElementById(videoId);
+        
+        context2d.drawImage(video, 0, 0, 320, 240);
+        const b64 = canvas.toDataURL('image/png');
+        
+        const preview = document.getElementById(previewId);
+        preview.src = b64;
+        preview.style.display = 'block';
+        
+        document.getElementById(fotoInputId).value = b64;
+        if (context === 'edit') document.getElementById('edit-foto').value = "";
+        
+        video.style.display = 'none';
+        document.getElementById(snapId).style.display = 'none';
+        
+        this.stopStream(context);
+        
+        if (context === 'edit') {
+            document.getElementById('usar-webcam-checkbox').checked = false;
+        }
+    },
+
+    previewFile(input, context = 'cadastro') {
+        const file = input.files[0];
+        if (!file) return;
+        
+        if (file.size > 5 * 1024 * 1024) {
+            System.showToast("Arquivo muito grande. Máximo 5MB.", "error");
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const previewId = context === 'edit' ? 'edit-img-preview' : 'img-preview';
+            const fotoInputId = context === 'edit' ? 'edit-foto-base64' : 'c-foto';
+            
+            const preview = document.getElementById(previewId);
+            preview.src = e.target.result;
+            preview.style.display = 'block';
+            
+            document.getElementById(fotoInputId).value = e.target.result;
+            if (context === 'edit') {
+                document.getElementById('edit-foto').value = "";
+                document.getElementById('edit-foto-preview').style.display = 'none';
+            }
+            
+            this.stopStream(context);
+            if (context === 'edit') document.getElementById('usar-webcam-checkbox').checked = false;
+        };
+        reader.readAsDataURL(file);
+    },
+
+    toggleWebcam(context = 'edit') {
+        const checkbox = document.getElementById('usar-webcam-checkbox');
+        if (checkbox.checked) {
+            this.startCam(context);
+        } else {
+            this.stopStream(context);
+            const video = document.getElementById(context === 'edit' ? 'edit-webcam' : 'webcam');
+            video.style.display = 'none';
+            document.getElementById(context === 'edit' ? 'edit-snap' : 'snap').style.display = 'none';
+        }
+    },
+
+    clearPhoto(context = 'edit') {
+        const previewId = context === 'edit' ? 'edit-img-preview' : 'img-preview';
+        const fotoInputId = context === 'edit' ? 'edit-foto-base64' : 'c-foto';
+        
+        const preview = document.getElementById(previewId);
+        preview.src = "";
+        preview.style.display = 'none';
+        
+        document.getElementById(fotoInputId).value = "";
+        if (context === 'edit') {
+            document.getElementById('edit-foto').value = "";
+            document.getElementById('edit-foto-preview').style.display = 'none';
+        }
+        
+        this.stopStream(context);
+        if (context === 'edit') document.getElementById('usar-webcam-checkbox').checked = false;
+    },
+
+    stopStream(context) {
+        if (this.streams[context]) {
+            this.streams[context].getTracks().forEach(track => track.stop());
+            this.streams[context] = null;
+        }
+    }
 };
 
 // ================================
@@ -1326,35 +1350,6 @@ const ExcelExporter = {
             ],
             "ocorrencias",
             "Exportação de ocorrências concluída!"
-        );
-    },
-
-    exportMedidas() {
-        this.exportData(
-            TableManager.instances.medidas.data,
-            [
-                { header: 'Data', key: 'data', formatter: Utils.formatarDataBR },
-                { header: 'Matrícula', key: 'matricula' },
-                { header: 'Tipo', key: 'tipo' },
-                { header: 'Motivo', key: 'motivo' },
-                { header: 'Dias de Suspensão', key: 'dias' }
-            ],
-            "medidas_disciplinares",
-            "Exportação de medidas disciplinares concluída!"
-        );
-    },
-
-    exportFaltas() {
-        this.exportData(
-            TableManager.instances.faltas.data,
-            [
-                { header: 'Data', key: 'data', formatter: Utils.formatarDataBR },
-                { header: 'Matrícula', key: 'matricula' },
-                { header: 'Tipo', key: 'tipo' },
-                { header: 'Observação', key: 'obs' }
-            ],
-            "faltas",
-            "Exportação de faltas concluída!"
         );
     },
 
@@ -1766,11 +1761,18 @@ async function gerarRelatorioAnual() {
     if(r.rankingSetores?.length) r.rankingSetores.forEach(x => s.innerHTML += `<tr><td>${x.nome}</td><td>${x.abs}%</td></tr>`);
 }
 
-// Função para carregar tabelas (mantida para compatibilidade)
 async function carregarTabelas() {
-    // Agora carrega através do TableManager
-    TableManager.instances.medidas.loadData();
-    TableManager.instances.faltas.loadData();
+    System.showLoad(true);
+    const r = await System.api("consultaGeral");
+    System.showLoad(false);
+    const f = document.getElementById('corpoFaltas'); f.innerHTML = "";
+    const m = document.getElementById('corpoMedidas'); m.innerHTML = "";
+    if (!r?.length) return;
+    r.forEach(i => {
+        let dt = Utils.formatarDataBR(i.data);
+        if (i.cat === "Falta") f.innerHTML += `<tr><td>${dt}</td><td>${i.matricula}</td><td><span class="badge bg-fora">${i.tipo}</span></td><td>${i.obs||"-"}</td></tr>`;
+        else m.innerHTML += `<tr><td>${dt}</td><td>${i.matricula}</td><td><span class="badge bg-adv">${i.tipo}</span></td><td>${i.obs||"-"}</td><td>${i.dias||"0"}</td></tr>`;
+    });
 }
 
 async function gerarFicha() {
@@ -1820,5 +1822,5 @@ document.addEventListener('DOMContentLoaded', function() {
   </script>
 
 </body>
-
 </html>
+
